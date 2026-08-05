@@ -1,0 +1,6 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import Image from "next/image";
+import { categories } from "@/lib/catalog";
+export const metadata: Metadata = { title: "Collections", description: "Explore Joyguru Enterprise collections." };
+export default function CategoriesPage() { return <main className="container-shell py-16 lg:py-24"><p className="eyebrow">Collections</p><h1 className="section-title mt-4 max-w-2xl">Clay for every<br /><em className="font-normal text-clay-400">kind of ritual.</em></h1><div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{categories.map((category, index) => <Link href={`/categories/${category.slug}`} key={category.slug} className={`group relative aspect-[.9] overflow-hidden rounded-3xl bg-clay-100 ${index === 0 ? "sm:row-span-2 sm:aspect-auto" : ""}`}><Image src={category.image} alt={category.name} fill sizes="(max-width: 640px) 100vw, 33vw" className="object-cover transition duration-700 group-hover:scale-105" /><div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/80 to-transparent p-6 pt-24"><p className="display text-3xl font-semibold text-white">{category.name}</p><p className="mt-2 text-sm text-white/75">{category.description}</p><span className="mt-5 inline-block text-xs font-semibold text-clay-200">{category.count} pieces →</span></div></Link>)}</div></main>; }

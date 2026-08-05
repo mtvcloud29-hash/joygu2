@@ -1,0 +1,11 @@
+import type { Metadata } from "next";
+import Image from "next/image";
+import { notFound } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+import { renderBlogContent } from "@/lib/blog";
+import { absoluteUrl } from "@/lib/utils";
+import { BlogActions } from "@/components/blog/BlogActions";
+import { CommentForm } from "@/components/blog/CommentForm";
+export const dynamic="force-dynamic";
+export async function generateMetadata({params}:{params:Promise<{slug:string}>}):Promise<Metadata>{const post=await prisma.blogPost.findUnique({where:{slug:(await params).slug}});return post?{title:post.metaTitle||post.title,description:post.metaDescription||post.excerpt||undefined,alternates:{canonical:absoluteUrl(`/blog/${post.slug}`)},openGraph:{title:post.title,description:post.excerpt||undefined,images:post.featuredImage?[post.featuredImage]:undefined}}:{title:"Journal article not found"}}
+export default async function BlogPostPage({params}:{params:Promise<{slug:string}>}){const slug=(await params).slug;const post=await prisma.blogPost.findFirst({where:{slug,status:"PUBLISHED",publishedAt:{lte:new Date()}},include:{category:true,author:{select:{name:true}}}});if(!post)notFound();await prisma.blogPost.update({where:{id:post.id},data:{viewCount:{increment:1}}});return <main className="container-shell py-12 lg:py-20"><article className="mx-auto max-w-3xl"><p className="eyebrow">{post.category?.name??"Joyguru journal"} · {post.readingTime} min read</p><h1 className="display mt-5 text-6xl font-semibold leading-[.88] tracking-[-.05em]">{post.title}</h1>{post.excerpt&&<p className="mt-6 text-lg leading-8 text-muted">{post.excerpt}</p>}{post.featuredImage&&<div className="relative mt-12 aspect-[1.5] overflow-hidden rounded-3xl"><Image src={post.featuredImage} alt={post.title} fill priority sizes="100vw" className="object-cover"/></div>}<div className="prose prose-stone mt-14 max-w-none prose-headings:font-display prose-headings:text-ink prose-p:text-muted" dangerouslySetInnerHTML={{__html:renderBlogContent(post.content)}}/><BlogActions title={post.title}/><section className="mt-20 border-t border-clay-200 pt-12"><p className="eyebrow">Join the conversation</p><h2 className="section-title mt-3 text-4xl">Leave a note.</h2><CommentForm postId={post.id}/></section></article></main>}

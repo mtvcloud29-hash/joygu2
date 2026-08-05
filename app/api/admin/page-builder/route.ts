@@ -1,0 +1,8 @@
+import { NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { defaultHomepageBlocks, pageDocumentSchema } from "@/lib/page-builder";
+async function admin() { const user = await getCurrentUser(); return user && (user.role === "ADMIN" || user.role === "STAFF") ? user : null; }
+export async function GET() { if (!await admin()) return NextResponse.json({ error: "Forbidden" }, { status: 403 }); const page = await prisma.cmsPage.findUnique({ where: { slug: "home" } }); return NextResponse.json({ page: page ?? { slug: "home", title: "Homepage", status: "DRAFT", blocks: defaultHomepageBlocks, seo: { title: "", description: "" } } }); }
+export async function PUT(request: Request) { if (!await admin()) return NextResponse.json({ error: "Forbidden" }, { status: 403 }); const parsed = pageDocumentSchema.safeParse(await request.json().catch(() => null)); if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid page document." }, { status: 400 }); const page = await prisma.cmsPage.upsert({ where: { slug: parsed.data.slug }, update: { title: parsed.data.title, blocks: parsed.data.blocks, seo: parsed.data.seo }, create: { slug: parsed.data.slug, title: parsed.data.title, blocks: parsed.data.blocks, seo: parsed.data.seo } }); return NextResponse.json({ ok: true, page }); }
+export async function POST(request: Request) { if (!await admin()) return NextResponse.json({ error: "Forbidden" }, { status: 403 }); const page = await prisma.cmsPage.update({ where: { slug: "home" }, data: { status: "PUBLISHED", publishedAt: new Date() } }); return NextResponse.json({ ok: true, page }); }

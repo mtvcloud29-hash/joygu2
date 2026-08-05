@@ -1,0 +1,1 @@
+export default function Loading() { return <main className="container-shell py-24"><div className="skeleton-shimmer h-5 w-24 rounded" /><div className="skeleton-shimmer mt-5 h-16 max-w-xl rounded" /><div className="mt-12 grid grid-cols-2 gap-5 md:grid-cols-4">{[1,2,3,4].map((i) => <div key={i} className="skeleton-shimmer aspect-[.88] rounded-3xl" />)}</div></main>; }

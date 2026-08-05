@@ -1,0 +1,2 @@
+import type { MetadataRoute } from "next";
+export default function manifest(): MetadataRoute.Manifest { return { name: "Joyguru Enterprise", short_name: "Joyguru", description: "Handmade clayware from Bengal.", start_url: "/", display: "standalone", background_color: "#F8F2EC", theme_color: "#5A2D14", icons: [{ src: "/images/brand/joyguru-logo.png", sizes: "512x512", type: "image/jpeg", purpose: "any" }] }; }

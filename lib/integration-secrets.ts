@@ -1,0 +1,7 @@
+const encoder = new TextEncoder();
+async function key() { const digest = await crypto.subtle.digest("SHA-256", encoder.encode(process.env.AUTH_SECRET ?? "local-development-secret-change-me")); return crypto.subtle.importKey("raw", digest, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]); }
+function encode(bytes: Uint8Array) { let value = ""; for (const byte of bytes) value += String.fromCharCode(byte); return btoa(value).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", ""); }
+function decode(value: string) { const base64 = value.replaceAll("-", "+").replaceAll("_", "/").padEnd(Math.ceil(value.length / 4) * 4, "="); const binary = atob(base64); return Uint8Array.from(binary, (char) => char.charCodeAt(0)); }
+export async function encryptIntegrationSecret(value: string) { if (!value) return ""; const iv = crypto.getRandomValues(new Uint8Array(12)); const data = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await key(), encoder.encode(value))); return `enc:v1:${encode(iv)}:${encode(data)}`; }
+export async function decryptIntegrationSecret(value: string) { if (!value || !value.startsWith("enc:v1:")) return value; const [, , iv, data] = value.split(":"); try { const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: decode(iv) }, await key(), decode(data)); return new TextDecoder().decode(plain); } catch { return ""; } }
+export function maskSecret(value: string) { if (!value) return ""; return value.length <= 6 ? "••••••" : `${value.slice(0, 3)}••••${value.slice(-3)}`; }

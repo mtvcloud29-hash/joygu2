@@ -1,0 +1,69 @@
+import { prisma } from "@/lib/prisma";
+import { safeQuery } from "@/lib/safe-db";
+import { site } from "@/lib/constants";
+import { z } from "zod";
+import type { Prisma } from "@prisma/client";
+
+const booleanField = z.boolean().default(false);
+const stringField = z.string().max(10_000).default("");
+
+export const settingsSchema = z.object({
+  general: z.object({ companyName: stringField, ownerName: stringField, websiteTitle: stringField, websiteDescription: stringField, supportEmail: z.string().email().or(z.literal("")).default(""), businessEmail: z.string().email().or(z.literal("")).default(""), phone: stringField, whatsapp: stringField, address: stringField, gstNumber: stringField, workingHours: stringField, logoUrl: stringField, darkLogoUrl: stringField, faviconUrl: stringField, seoImageUrl: stringField }),
+  payment: z.object({ enabledRazorpay: booleanField, enabledCod: booleanField, enabledBankTransfer: booleanField, enabledUpi: booleanField, razorpayKeyId: stringField, razorpaySecret: stringField, webhookSecret: stringField, currency: stringField, taxPercentage: stringField, shippingCharges: stringField, freeShippingLimit: stringField, minimumOrderAmount: stringField, maximumCodAmount: stringField, testMode: booleanField, liveMode: booleanField }),
+  discord: z.object({ enabled: booleanField, webhookUrl: stringField, brandImage: stringField, newOrder: booleanField, paymentSuccess: booleanField, paymentFailed: booleanField, refund: booleanField, adminLogin: booleanField, failedLogin: booleanField, newsletter: booleanField, wholesale: booleanField, contact: booleanField, lowStock: booleanField, outOfStock: booleanField, serverStartup: booleanField, deployment: booleanField, productCreated: booleanField, productUpdated: booleanField, productDeleted: booleanField }),
+  email: z.object({ enabled: booleanField, resendApiKey: stringField, senderEmail: stringField, senderName: stringField, replyTo: stringField, orderEmails: booleanField, shippingEmails: booleanField, newsletterEmails: booleanField, passwordResetEmails: booleanField, welcomeEmails: booleanField }),
+  seo: z.object({ siteTitle: stringField, metaDescription: stringField, keywords: stringField, canonicalUrl: stringField, ogImage: stringField, twitterImage: stringField, robotsEnabled: booleanField, sitemapEnabled: booleanField, schemaEnabled: booleanField, googleVerification: stringField, bingVerification: stringField, facebookVerification: stringField }),
+  social: z.object({ facebook: stringField, instagram: stringField, youtube: stringField, twitter: stringField, linkedin: stringField, pinterest: stringField, whatsapp: stringField, telegram: stringField, discord: stringField }),
+  analytics: z.object({ googleAnalytics: stringField, googleTagManager: stringField, facebookPixel: stringField, microsoftClarity: stringField, hotjar: stringField, metaPixel: stringField, trackingEnabled: booleanField }),
+  shipping: z.object({ shippingCharge: stringField, freeShipping: stringField, packagingCharge: stringField, deliveryDays: stringField, courierName: stringField, trackingUrl: stringField }),
+  invoice: z.object({ invoicePrefix: stringField, invoiceFooter: stringField, companySignature: stringField, terms: stringField, gst: stringField, bankDetails: stringField, qrCodeUrl: stringField }),
+  security: z.object({ maintenanceMode: booleanField, registrationEnabled: booleanField, guestCheckoutEnabled: booleanField, emailVerificationEnabled: booleanField, rateLimit: stringField, sessionTimeout: stringField, adminTwoFactorEnabled: booleanField }),
+  homepage: z.object({ heroTitle: stringField, heroSubtitle: stringField, heroPrimaryLabel: stringField, heroPrimaryHref: stringField, heroSecondaryLabel: stringField, heroSecondaryHref: stringField, heroBackgroundUrl: stringField, heroImageUrl: stringField, hero3dEnabled: booleanField, collectionsEnabled: booleanField, featuredProductsEnabled: booleanField, testimonialsEnabled: booleanField, wholesaleEnabled: booleanField, newsletterEnabled: booleanField, footerCta: stringField }),
+  contact: z.object({ googleMapsUrl: stringField, officeAddress: stringField, supportNumber: stringField, whatsapp: stringField, email: stringField, businessHours: stringField }),
+  brand: z.object({ primary: stringField, secondary: stringField, background: stringField, card: stringField, heading: stringField, text: stringField, border: stringField, hover: stringField, footer: stringField })
+});
+
+export type SettingsDocument = z.infer<typeof settingsSchema>;
+export type PublicSettings = SettingsDocument & { configuredSecrets: { payment: boolean; discord: boolean; email: boolean } };
+
+export const defaultSettings: SettingsDocument = {
+  general: { companyName: site.name, ownerName: site.owner, websiteTitle: "Joyguru Enterprise — Objects with an old soul", websiteDescription: site.description, supportEmail: site.email, businessEmail: site.email, phone: site.phone, whatsapp: site.whatsapp, address: site.address.join(", "), gstNumber: "", workingHours: "Monday–Saturday · 9:00 AM–6:00 PM IST", logoUrl: "", darkLogoUrl: "", faviconUrl: "", seoImageUrl: "/images/brand/joyguru-logo.png" },
+  payment: { enabledRazorpay: true, enabledCod: true, enabledBankTransfer: false, enabledUpi: false, razorpayKeyId: "", razorpaySecret: "", webhookSecret: "", currency: "INR", taxPercentage: "0", shippingCharges: "99", freeShippingLimit: "1999", minimumOrderAmount: "0", maximumCodAmount: "50000", testMode: true, liveMode: false },
+  discord: { enabled: true, webhookUrl: "", brandImage: "", newOrder: true, paymentSuccess: true, paymentFailed: true, refund: true, adminLogin: true, failedLogin: true, newsletter: true, wholesale: true, contact: true, lowStock: true, outOfStock: true, serverStartup: true, deployment: true, productCreated: true, productUpdated: true, productDeleted: true },
+  email: { enabled: true, resendApiKey: "", senderEmail: site.email, senderName: site.name, replyTo: site.email, orderEmails: true, shippingEmails: true, newsletterEmails: true, passwordResetEmails: true, welcomeEmails: true },
+  seo: { siteTitle: site.name, metaDescription: site.description, keywords: "handmade clay, pottery, terracotta, Bengal pottery, wholesale ceramics", canonicalUrl: "", ogImage: "/images/brand/joyguru-logo.png", twitterImage: "/images/brand/joyguru-logo.png", robotsEnabled: true, sitemapEnabled: true, schemaEnabled: true, googleVerification: "", bingVerification: "", facebookVerification: "" },
+  social: { facebook: "", instagram: "https://instagram.com", youtube: "", twitter: "", linkedin: "", pinterest: "", whatsapp: `https://wa.me/91${site.whatsapp}`, telegram: "", discord: "" },
+  analytics: { googleAnalytics: "", googleTagManager: "", facebookPixel: "", microsoftClarity: "", hotjar: "", metaPixel: "", trackingEnabled: false },
+  shipping: { shippingCharge: "99", freeShipping: "1999", packagingCharge: "0", deliveryDays: "3–7 working days", courierName: "", trackingUrl: "" },
+  invoice: { invoicePrefix: "JG-", invoiceFooter: "Thank you for choosing handmade.", companySignature: site.owner, terms: "Goods once sold are subject to our refund policy.", gst: "", bankDetails: "", qrCodeUrl: "" },
+  security: { maintenanceMode: false, registrationEnabled: true, guestCheckoutEnabled: true, emailVerificationEnabled: false, rateLimit: "30", sessionTimeout: "30 days", adminTwoFactorEnabled: false },
+  homepage: { heroTitle: "The beauty|of being|well made.", heroSubtitle: "Timeless clayware for slow mornings, generous tables and spaces that feel like home.", heroPrimaryLabel: "Explore the collection", heroPrimaryHref: "/products", heroSecondaryLabel: "Our story", heroSecondaryHref: "/about", heroBackgroundUrl: "/images/photography/pottery-earth.jpg", heroImageUrl: "/images/brand/joyguru-logo.png", hero3dEnabled: true, collectionsEnabled: true, featuredProductsEnabled: true, testimonialsEnabled: true, wholesaleEnabled: true, newsletterEnabled: true, footerCta: "Made for the|rituals you keep." },
+  contact: { googleMapsUrl: "", officeAddress: site.address.join(", "), supportNumber: site.phone, whatsapp: site.whatsapp, email: site.email, businessHours: "Monday–Saturday · 9:00 AM–6:00 PM IST" },
+  brand: { primary: "#D88C58", secondary: "#5A2D14", background: "#F8F2EC", card: "#FFFDFC", heading: "#2D1A10", text: "#6F5A4D", border: "#E8D4C2", hover: "#B86134", footer: "#2D1A10" }
+};
+
+async function encryptionKey() { const digest = await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(process.env.AUTH_SECRET ?? "local-development-secret-change-me")); return globalThis.crypto.subtle.importKey("raw", digest, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]); }
+function toBase64Url(bytes: Uint8Array) { let binary = ""; for (const byte of bytes) binary += String.fromCharCode(byte); return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", ""); }
+function fromBase64Url(value: string) { const base64 = value.replaceAll("-", "+").replaceAll("_", "/").padEnd(Math.ceil(value.length / 4) * 4, "="); const binary = atob(base64); return Uint8Array.from(binary, (char) => char.charCodeAt(0)); }
+async function encryptSecret(value: string) { if (!value) return ""; const iv = globalThis.crypto.getRandomValues(new Uint8Array(12)); const encrypted = new Uint8Array(await globalThis.crypto.subtle.encrypt({ name: "AES-GCM", iv }, await encryptionKey(), new TextEncoder().encode(value))); return `enc:v2:${toBase64Url(iv)}:${toBase64Url(encrypted)}`; }
+async function decryptSecret(value: string) { if (!value || !value.startsWith("enc:v2:")) return value; const [, , ivText, dataText] = value.split(":"); try { const decrypted = await globalThis.crypto.subtle.decrypt({ name: "AES-GCM", iv: fromBase64Url(ivText) }, await encryptionKey(), fromBase64Url(dataText)); return new TextDecoder().decode(decrypted); } catch { return ""; } }
+
+const secretFields = ["payment.razorpayKeyId", "payment.razorpaySecret", "payment.webhookSecret", "discord.webhookUrl", "email.resendApiKey"] as const;
+type SecretPath = typeof secretFields[number];
+function getSecret(document: SettingsDocument, path: SecretPath) { const [section, field] = path.split(".") as [keyof SettingsDocument, string]; return String((document[section] as Record<string, unknown>)[field] ?? ""); }
+function setSecret(document: SettingsDocument, path: SecretPath, value: string) { const [section, field] = path.split(".") as [keyof SettingsDocument, string]; (document[section] as Record<string, unknown>)[field] = value; }
+
+export async function getStoredSettings(): Promise<SettingsDocument> {
+  if (!process.env.DATABASE_URL) return structuredClone(defaultSettings);
+  const record = await safeQuery(() => prisma.siteSetting.findUnique({ where: { key: "global" } }), null);
+  if (!record) return structuredClone(defaultSettings);
+  const parsed = settingsSchema.safeParse(record.value);
+  return parsed.success ? { ...structuredClone(defaultSettings), ...parsed.data, general: { ...defaultSettings.general, ...parsed.data.general }, payment: { ...defaultSettings.payment, ...parsed.data.payment }, discord: { ...defaultSettings.discord, ...parsed.data.discord }, email: { ...defaultSettings.email, ...parsed.data.email }, seo: { ...defaultSettings.seo, ...parsed.data.seo }, social: { ...defaultSettings.social, ...parsed.data.social }, analytics: { ...defaultSettings.analytics, ...parsed.data.analytics }, shipping: { ...defaultSettings.shipping, ...parsed.data.shipping }, invoice: { ...defaultSettings.invoice, ...parsed.data.invoice }, security: { ...defaultSettings.security, ...parsed.data.security }, homepage: { ...defaultSettings.homepage, ...parsed.data.homepage }, contact: { ...defaultSettings.contact, ...parsed.data.contact }, brand: { ...defaultSettings.brand, ...parsed.data.brand } } : structuredClone(defaultSettings);
+}
+
+export async function getPublicSettings(): Promise<PublicSettings> { const stored = await getStoredSettings(); return { ...stored, payment: { ...stored.payment, razorpayKeyId: "", razorpaySecret: "", webhookSecret: "" }, discord: { ...stored.discord, webhookUrl: "" }, email: { ...stored.email, resendApiKey: "" }, configuredSecrets: { payment: secretFields.slice(0, 3).some((field) => Boolean(getSecret(stored, field))), discord: Boolean(getSecret(stored, "discord.webhookUrl")), email: Boolean(getSecret(stored, "email.resendApiKey")) } }; }
+
+export async function getPrivateSettings() { const stored = await getStoredSettings(); for (const field of secretFields) setSecret(stored, field, await decryptSecret(getSecret(stored, field))); return stored; }
+
+export async function saveSettings(input: SettingsDocument) { const current = await getStoredSettings(); const next = structuredClone(input); for (const field of secretFields) { const incoming = getSecret(next, field); const previous = getSecret(current, field); setSecret(next, field, incoming ? await encryptSecret(incoming) : previous); } await prisma.siteSetting.upsert({ where: { key: "global" }, update: { value: next as unknown as Prisma.InputJsonValue }, create: { key: "global", value: next as unknown as Prisma.InputJsonValue } }); return getPublicSettings(); }
+export async function resetSettings() { await prisma.siteSetting.upsert({ where: { key: "global" }, update: { value: structuredClone(defaultSettings) as unknown as Prisma.InputJsonValue }, create: { key: "global", value: structuredClone(defaultSettings) as unknown as Prisma.InputJsonValue } }); return getPublicSettings(); }

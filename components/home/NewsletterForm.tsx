@@ -1,0 +1,5 @@
+"use client";
+import { useRef, useState, useTransition } from "react";
+import { ArrowRight } from "lucide-react";
+import { subscribeToNewsletter } from "@/actions/newsletter";
+export function NewsletterForm() { const ref = useRef<HTMLFormElement>(null); const [pending, startTransition] = useTransition(); const [message, setMessage] = useState(""); return <form ref={ref} action={(formData) => startTransition(async () => { const result = await subscribeToNewsletter(formData); setMessage(result.message); if (result.ok) ref.current?.reset(); })} className="mt-6"><div className="flex max-w-md items-center border-b border-clay-300 pb-2"><input aria-label="Email address" type="email" name="email" required placeholder="Your email address" className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-muted/60" /><button aria-label="Subscribe" disabled={pending} className="rounded-full p-2 text-clay-500 transition hover:bg-clay-100 disabled:opacity-50"><ArrowRight size={19} /></button></div>{message && <p className="mt-3 max-w-md text-xs text-muted">{message}</p>}</form>; }

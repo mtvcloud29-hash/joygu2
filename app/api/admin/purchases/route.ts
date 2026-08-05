@@ -1,0 +1,9 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { createPurchase } from "@/lib/inventory";
+const schema = z.object({ supplierId: z.string().cuid(), warehouseId: z.string().cuid(), invoiceNumber: z.string().min(1).max(120), purchaseDate: z.coerce.date(), notes: z.string().max(2000).optional(), items: z.array(z.object({ productId: z.string().cuid(), variantId: z.string().cuid().optional(), quantity: z.coerce.number().int().positive(), purchasePrice: z.coerce.number().nonnegative(), gst: z.coerce.number().nonnegative(), batchNumber: z.string().min(1).max(120) })).min(1) });
+async function admin() { const user = await getCurrentUser(); return user && (user.role === "ADMIN" || user.role === "STAFF") ? user : null; }
+export async function GET() { if (!await admin()) return NextResponse.json({ error: "Forbidden" }, { status: 403 }); const purchases = await prisma.purchase.findMany({ orderBy: { purchaseDate: "desc" }, take: 200, include: { supplier: true, items: { include: { product: true, warehouse: true, batch: true } } } }); return NextResponse.json({ purchases }); }
+export async function POST(request: Request) { const user = await admin(); if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 }); const parsed = schema.safeParse(await request.json().catch(() => null)); if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid purchase entry." }, { status: 400 }); try { const purchase = await createPurchase({ ...parsed.data, createdById: user.id }); return NextResponse.json({ ok: true, purchase }); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to save purchase." }, { status: 409 }); } }
