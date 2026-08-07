@@ -25,6 +25,16 @@ function getSenderDetails(settings: SettingsDocument) {
   return { senderEmail, senderName };
 }
 
+function formatSmtpError(error: unknown) {
+  if (error instanceof Error) {
+    const response = (error as Error & { response?: string }).response;
+    const code = (error as Error & { code?: string }).code;
+    const stack = error.stack;
+    return [error.message, code, response, stack].filter(Boolean).join(" | ");
+  }
+  return String(error);
+}
+
 export async function sendConfiguredEmail({ to, subject, text, html, replyTo, from }: SendEmailOptions) {
   const settings = await getPrivateSettings();
   if (!settings.email.enabled) throw new Error("Email delivery is disabled in settings.");
@@ -38,37 +48,96 @@ export async function sendConfiguredEmail({ to, subject, text, html, replyTo, fr
     const host = settings.email.smtpHost?.trim() ?? "";
     const username = settings.email.smtpUsername?.trim() ?? "";
     const password = settings.email.smtpPassword?.trim() ?? "";
-    const port = Number(settings.email.smtpPort) || 587;
-    const encryption = settings.email.smtpEncryption || "STARTTLS";
+    const encryption = (settings.email.smtpEncryption || "STARTTLS").toUpperCase();
+    const port = Number(settings.email.smtpPort) || (encryption === "SSL" ? 465 : 587);
 
     if (!host || !username || !password || !senderEmail) {
       throw new Error("SMTP host, username, password, and sender email are required.");
     }
 
-    const secure = encryption === "SSL" || encryption === "TLS";
+    let secure = false;
+    let requireTLS = false;
+    let ignoreTLS = false;
+
+    if (encryption === "SSL") {
+      secure = true;
+    } else if (encryption === "TLS" || encryption === "STARTTLS") {
+      secure = false;
+      requireTLS = true;
+    } else if (encryption === "NONE") {
+      ignoreTLS = true;
+    }
+
+    console.info("[smtp] preparing transport", {
+      provider,
+      host,
+      port,
+      username,
+      secure,
+      encryption,
+    });
+
     const transporter = nodemailer.createTransport({
       host,
       port,
       secure,
-      requireTLS: encryption === "STARTTLS",
-      ignoreTLS: encryption === "None",
+      requireTLS,
+      ignoreTLS,
       auth: { user: username, pass: password },
     });
 
-    const info = await transporter.sendMail({
-      from: fromAddress,
-      to,
-      replyTo: replyToAddress,
-      subject,
-      text,
-      html,
-    });
-
-    if (!info.messageId) {
-      throw new Error("SMTP server did not accept the message.");
+    try {
+      await transporter.verify();
+      console.info("[smtp] transport verified", {
+        provider,
+        host,
+        port,
+        username,
+        secure,
+        encryption,
+      });
+    } catch (error) {
+      const message = formatSmtpError(error);
+      console.error("[smtp] verification failed", {
+        provider,
+        host,
+        port,
+        username,
+        secure,
+        encryption,
+        error: message,
+      });
+      throw new Error(message);
     }
 
-    return info;
+    try {
+      const info = await transporter.sendMail({
+        from: fromAddress,
+        to,
+        replyTo: replyToAddress,
+        subject,
+        text,
+        html,
+      });
+
+      if (!info.messageId) {
+        throw new Error("SMTP server did not accept the message.");
+      }
+
+      return info;
+    } catch (error) {
+      const message = formatSmtpError(error);
+      console.error("[smtp] send failed", {
+        provider,
+        host,
+        port,
+        username,
+        secure,
+        encryption,
+        error: message,
+      });
+      throw new Error(message);
+    }
   }
 
   const apiKey = settings.email.resendApiKey?.trim() ?? "";
