@@ -26,9 +26,9 @@ export class ShiprocketProvider implements ShippingProvider {
       order_items: input.items.map((item) => ({ name: item.name, sku: item.sku ?? item.name, units: item.quantity, selling_price: item.price, discount: 0, tax: 0, hsn: "" })),
       payment_method: input.paymentMethod === "COD" ? "COD" : "Prepaid",
       sub_total: input.subtotal,
-      length: input.dimensions?.length ?? 10,
-      breadth: input.dimensions?.breadth ?? 10,
-      height: input.dimensions?.height ?? 10,
+      length: 10,
+      breadth: 10,
+      height: 10,
       weight: input.weight,
     } as const;
     const data = await api<{ order_id?: number; shipment_id?: number }>("/orders/create/adhoc", { method: "POST", body: JSON.stringify(payload) }, this.email, this.password);
