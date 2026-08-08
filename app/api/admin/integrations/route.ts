@@ -1,0 +1,7 @@
+import { NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { getPublicIntegrations, integrationsSchema, saveIntegrations } from "@/lib/integrations";
+async function admin() { const user = await getCurrentUser(); return user && (user.role === "ADMIN" || user.role === "STAFF") ? user : null; }
+export async function GET() { const user = await admin(); if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 }); return NextResponse.json({ integrations: await getPublicIntegrations() }, { headers: { "Cache-Control": "no-store" } }); }
+export async function PUT(request: Request) { const user = await admin(); if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 }); const parsed = integrationsSchema.safeParse(await request.json().catch(() => null)); if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid integration settings." }, { status: 400 }); try { const previous = await getPublicIntegrations(); const integrations = await saveIntegrations(parsed.data); await prisma.activityLog.create({ data: { userId: user.id, action: "UPDATE", entity: "Integration", entityId: "all", previousValue: previous as never, newValue: integrations as never, metadata: { updatedBy: user.email } } }); return NextResponse.json({ ok: true, integrations }); } catch { return NextResponse.json({ error: "Unable to save integration settings." }, { status: 500 }); } }

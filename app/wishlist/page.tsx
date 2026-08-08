@@ -1,0 +1,8 @@
+import Link from "next/link";
+import Image from "next/image";
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { formatINR } from "@/lib/utils";
+export const dynamic = "force-dynamic";
+export default async function WishlistPage() { const user = await getCurrentUser(); if (!user) redirect("/account/login"); const items = await prisma.wishlistItem.findMany({ where: { userId: user.id }, include: { product: { include: { images: { orderBy: { sortOrder: "asc" } } } } }, orderBy: { createdAt: "desc" } }); return <main className="container-shell py-16 lg:py-24"><p className="eyebrow">Saved pieces</p><h1 className="section-title mt-4">Your <em className="font-normal text-clay-400">wishlist.</em></h1>{items.length ? <div className="mt-12 grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">{items.map(({ product }) => <Link href={`/products/${product.slug}`} key={product.id}><div className="relative aspect-[.88] overflow-hidden rounded-3xl bg-clay-100"><Image src={product.images[0]?.url ?? "/images/photography/pottery-earth.jpg"} alt={product.name} fill sizes="25vw" className="object-cover" /></div><p className="mt-4 text-sm font-semibold text-ink">{product.name}</p><p className="mt-1 text-sm text-muted">{formatINR(Number(product.price))}</p></Link>)}</div> : <div className="surface mt-12 flex min-h-56 flex-col items-center justify-center text-center"><p className="text-sm text-muted">Save the pieces you’re thinking about.</p><Link href="/products" className="button-primary mt-5">Explore the collection</Link></div>}</main>; }

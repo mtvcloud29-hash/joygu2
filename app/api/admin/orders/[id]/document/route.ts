@@ -1,0 +1,5 @@
+import { NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { createOrderDocument } from "@/lib/documents";
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) { const user = await getCurrentUser(); if (!user || (user.role !== "ADMIN" && user.role !== "STAFF")) return NextResponse.json({ error: "Forbidden" }, { status: 403 }); const type = new URL(request.url).searchParams.get("type"); if (type !== "invoice" && type !== "packing-slip" && type !== "label") return NextResponse.json({ error: "Invalid document type." }, { status: 400 }); const order = await prisma.order.findUnique({ where: { id: (await params).id }, include: { items: true } }); if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 }); const pdf = await createOrderDocument(order, type); return new NextResponse(pdf as BodyInit, { headers: { "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="${order.orderNumber}-${type}.pdf"`, "Cache-Control": "no-store" } }); }

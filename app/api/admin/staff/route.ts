@@ -1,0 +1,7 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+async function admin(){const user=await getCurrentUser();return user&&(user.role==="ADMIN"||user.role==="STAFF")?user:null}
+export async function GET(){if(!await admin())return NextResponse.json({error:"Forbidden"},{status:403});return NextResponse.json({staff:await prisma.user.findMany({where:{role:{in:["ADMIN","STAFF"]}},orderBy:{name:"asc"},select:{id:true,name:true,email:true,role:true,isActive:true,lastLoginAt:true,permissions:true,staffRoleAssignments:{include:{role:true}}}})})}
+export async function POST(request:Request){const actor=await admin();if(!actor)return NextResponse.json({error:"Forbidden"},{status:403});const p=z.object({name:z.string().min(2),email:z.string().email(),role:z.enum(["ADMIN","STAFF"]).default("STAFF"),roleIds:z.array(z.string().cuid()).default([])}).safeParse(await request.json().catch(()=>null));if(!p.success)return NextResponse.json({error:p.error.issues[0]?.message??"Invalid staff member"},{status:400});const user=await prisma.user.create({data:{name:p.data.name,email:p.data.email,role:p.data.role,staffRoleAssignments:{create:p.data.roleIds.map(roleId=>({roleId}))}}});await prisma.activityLog.create({data:{userId:actor.id,action:"CREATE",entity:"User",entityId:user.id,newValue:{email:user.email,role:user.role,roleIds:p.data.roleIds}}});return NextResponse.json({ok:true,user})}

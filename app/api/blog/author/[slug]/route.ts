@@ -1,0 +1,3 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+export async function GET(_: Request, { params }: { params: Promise<{ slug: string }> }) { const author = await prisma.user.findUnique({ where: { authorSlug: (await params).slug }, select: { id: true, name: true, authorSlug: true, authorBio: true, authorAvatarUrl: true, authorWebsite: true, authorSocialLinks: true, featuredAuthor: true, blogPosts: { where: { status: "PUBLISHED", publishedAt: { lte: new Date() } }, orderBy: { publishedAt: "desc" }, include: { category: true }, take: 100 } } }); if (!author) return NextResponse.json({ error: "Author not found." }, { status: 404 }); return NextResponse.json({ author }); }

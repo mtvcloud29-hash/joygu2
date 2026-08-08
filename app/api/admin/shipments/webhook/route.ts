@@ -1,0 +1,3 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+export async function POST(request: Request) { const secret = process.env.SHIPROCKET_WEBHOOK_SECRET; if (secret && request.headers.get("x-shiprocket-signature") !== secret) return NextResponse.json({ error: "Invalid webhook signature" }, { status: 401 }); const body = await request.json().catch(() => null) as { awb?: string; current_status?: string; shipment_status?: string; tracking_url?: string } | null; if (!body?.awb) return NextResponse.json({ received: true }); await prisma.shipment.updateMany({ where: { awb: body.awb }, data: { status: body.current_status ?? body.shipment_status ?? "IN_TRANSIT", trackingUrl: body.tracking_url } }); return NextResponse.json({ received: true }); }

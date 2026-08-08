@@ -1,0 +1,7 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { formatINR } from "@/lib/utils";
+export const dynamic = "force-dynamic";
+export default async function AccountOrdersPage() { const user = await getCurrentUser(); if (!user) redirect("/account/login"); const orders = await prisma.order.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, include: { items: true } }); return <main className="container-shell py-12 lg:py-20"><Link href="/account" className="text-xs font-semibold text-muted">← Account</Link><p className="eyebrow mt-8">Your journey</p><h1 className="section-title mt-3">Orders.</h1><div className="mt-10 space-y-4">{orders.map((order) => <Link href={`/account/order/${order.id}` as never} key={order.id} className="surface flex flex-col justify-between gap-4 p-6 transition hover:-translate-y-1 sm:flex-row sm:items-center"><div><p className="text-sm font-semibold text-ink">{order.orderNumber}</p><p className="mt-1 text-xs text-muted">{new Date(order.createdAt).toLocaleDateString("en-IN")} · {order.items.length} line items</p></div><div className="text-left sm:text-right"><p className="text-sm font-semibold text-ink">{formatINR(Number(order.total))}</p><p className="mt-1 text-xs capitalize text-clay-400">{order.status.toLowerCase().replaceAll("_", " ")}</p></div></Link>)}{!orders.length && <div className="surface p-12 text-center text-sm text-muted">You haven’t placed an order yet.</div>}</div></main>; }

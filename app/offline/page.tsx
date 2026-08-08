@@ -1,0 +1,2 @@
+import Link from "next/link";
+export default function OfflinePage() { return <main className="container-shell flex min-h-screen items-center justify-center py-20 text-center"><div><p className="eyebrow">Offline studio</p><h1 className="section-title mt-4">The workshop is<br /><em className="font-normal text-clay-400">quiet for a moment.</em></h1><p className="body-copy mx-auto mt-6 max-w-md">Reconnect to continue browsing the Joyguru Enterprise collection.</p><Link href="/" className="button-primary mt-8">Try again</Link></div></main>; }

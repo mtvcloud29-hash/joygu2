@@ -1,0 +1,4 @@
+import type { MetadataRoute } from "next";
+import { absoluteUrl } from "@/lib/utils";
+import { categories, catalog } from "@/lib/catalog";
+export default function sitemap(): MetadataRoute.Sitemap { const staticPages = ["", "/about", "/products", "/categories", "/gallery", "/wholesale", "/contact", "/faq", "/track-order", "/privacy-policy", "/terms", "/refund-policy", "/shipping-policy"]; return [...staticPages.map((path) => ({ url: absoluteUrl(path), lastModified: new Date(), changeFrequency: "weekly" as const, priority: path === "" ? 1 : .7 })), ...categories.map((category) => ({ url: absoluteUrl(`/categories/${category.slug}`), lastModified: new Date(), changeFrequency: "weekly" as const, priority: .6 })), ...catalog.map((product) => ({ url: absoluteUrl(`/products/${product.slug}`), lastModified: new Date(), changeFrequency: "daily" as const, priority: .8 }))]; }

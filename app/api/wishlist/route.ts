@@ -1,0 +1,4 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
+export async function POST(request: Request) { const user = await getCurrentUser(); if (!user) return NextResponse.json({ error: "Please sign in to save wishlist items." }, { status: 401 }); const body = await request.json().catch(() => null) as { productId?: string } | null; if (!body?.productId) return NextResponse.json({ error: "Product is required." }, { status: 400 }); const existing = await prisma.wishlistItem.findUnique({ where: { userId_productId: { userId: user.id, productId: body.productId } } }); if (existing) { await prisma.wishlistItem.delete({ where: { id: existing.id } }); return NextResponse.json({ saved: false }); } await prisma.wishlistItem.create({ data: { userId: user.id, productId: body.productId } }); return NextResponse.json({ saved: true }); }

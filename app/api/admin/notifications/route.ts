@@ -1,0 +1,6 @@
+import { NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+async function admin() { const user = await getCurrentUser(); return user && (user.role === "ADMIN" || user.role === "STAFF") ? user : null; }
+export async function GET() { if (!await admin()) return NextResponse.json({ error: "Forbidden" }, { status: 403 }); const notifications = await prisma.adminNotification.findMany({ where: { archivedAt: null }, orderBy: { createdAt: "desc" }, take: 100 }); return NextResponse.json({ notifications, unread: notifications.filter((item) => !item.readAt).length }); }
+export async function PATCH(request: Request) { if (!await admin()) return NextResponse.json({ error: "Forbidden" }, { status: 403 }); const body = await request.json().catch(() => null) as { ids?: string[]; action?: "read" | "archive" } | null; if (!body?.ids?.length || !body.action) return NextResponse.json({ error: "Invalid notification action." }, { status: 400 }); await prisma.adminNotification.updateMany({ where: { id: { in: body.ids } }, data: body.action === "read" ? { readAt: new Date() } : { archivedAt: new Date() } }); return NextResponse.json({ ok: true }); }

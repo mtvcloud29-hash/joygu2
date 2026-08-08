@@ -1,0 +1,5 @@
+import { NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+async function admin() { const user = await getCurrentUser(); return user && (user.role === "ADMIN" || user.role === "STAFF") ? user : null; }
+export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) { const user = await admin(); if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 }); const id = (await params).id; const role = await prisma.staffRole.findUnique({ where: { id }, include: { _count: { select: { assignments: true } } } }); if (!role) return NextResponse.json({ error: "Role not found" }, { status: 404 }); if (role._count.assignments) return NextResponse.json({ error: "Remove staff assignments before deleting this role." }, { status: 409 }); await prisma.staffRole.delete({ where: { id } }); await prisma.activityLog.create({ data: { userId: user.id, action: "DELETE", entity: "StaffRole", entityId: id, previousValue: role } }); return NextResponse.json({ ok: true }); }
