@@ -62,6 +62,12 @@ export async function POST(request: Request) {
       }
 
       const provider = getShippingProvider(settings.shipping.shiprocketEmail, settings.shipping.shiprocketPassword);
+      if (!provider.testConnection) {
+        return NextResponse.json(
+          { error: "Shiprocket connection test is not available." },
+          { status: 501 }
+        );
+      }
       try {
         await provider.testConnection();
         return NextResponse.json({ ok: true, message: "Shiprocket connection successful." });
