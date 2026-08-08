@@ -73,8 +73,9 @@ export async function sendConfiguredEmail({ to, subject, text, html, replyTo, fr
       host,
       port,
       username,
-      secure,
       encryption,
+      passwordExists: Boolean(password),
+      passwordLength: password.length,
     });
 
     const transporter = nodemailer.createTransport({
@@ -98,13 +99,19 @@ export async function sendConfiguredEmail({ to, subject, text, html, replyTo, fr
       });
     } catch (error) {
       const message = formatSmtpError(error);
+      const nodemailerError = error as Error & { code?: string; response?: string; command?: string };
       console.error("[smtp] verification failed", {
         provider,
         host,
         port,
         username,
-        secure,
         encryption,
+        passwordExists: Boolean(password),
+        passwordLength: password.length,
+        errorCode: nodemailerError.code,
+        errorResponse: nodemailerError.response,
+        errorCommand: nodemailerError.command,
+        errorMessage: nodemailerError.message,
         error: message,
       });
       throw new Error(message);
@@ -127,13 +134,19 @@ export async function sendConfiguredEmail({ to, subject, text, html, replyTo, fr
       return info;
     } catch (error) {
       const message = formatSmtpError(error);
+      const nodemailerError = error as Error & { code?: string; response?: string; command?: string };
       console.error("[smtp] send failed", {
         provider,
         host,
         port,
         username,
-        secure,
         encryption,
+        passwordExists: Boolean(password),
+        passwordLength: password.length,
+        errorCode: nodemailerError.code,
+        errorResponse: nodemailerError.response,
+        errorCommand: nodemailerError.command,
+        errorMessage: nodemailerError.message,
         error: message,
       });
       throw new Error(message);
