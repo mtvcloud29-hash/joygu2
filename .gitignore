@@ -1,7 +1,10 @@
 node_modules
 .next
+<<<<<<< HEAD
 .env
 .env.local
 .env.*.local
+=======
+>>>>>>> c5c08d70c3339368c786db8aec452e0478facf79
 *.log
 .DS_Store
